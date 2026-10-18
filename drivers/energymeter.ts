@@ -433,23 +433,7 @@ export async function checkHoldingRegisterPower(registers: { [key: string]: Regi
         scale: value[4].toString(),
         label: value[3],
       };
-      let resultValue: string = INVALID_VALUE;
-      switch (value[2]) {
-        case 'UINT16':
-          resultValue = response.body.valuesAsArray[0].toString();
-          break;
-        case 'INT16':
-          resultValue = response.body.valuesAsBuffer.readInt16BE().toString();
-          break;
-        case 'UINT32':
-          resultValue = ((response.body.valuesAsArray[0] << 16) | response.body.valuesAsArray[1]).toString();
-          break;
-        default:
-          break;
-      }
-      if (resultValue && resultValue !== undefined) {
-        measurement.value = resultValue;
-      }
+      measurement.value = decodeRegisterValue(value[2], response.body.valuesAsBuffer);
       result[key] = measurement;
     } catch (err) {
       // Error reading register - leave measurement as INVALID_VALUE for caller to handle

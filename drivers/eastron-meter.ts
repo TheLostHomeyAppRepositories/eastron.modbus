@@ -28,6 +28,37 @@ export abstract class EastronMeter extends Powermeter {
   protected abstract readonly importEnergyKey: string;
   protected abstract readonly exportEnergyKey: string;
 
+  // Holding register with the wiring the meter is configured for (1 = 1P2W, 2 = 3P3W, 3 = 3P4W).
+  // Three phase meters add it to their holdingRegistersBase under the key 'systemType'.
+  static readonly SYSTEM_TYPE_REGISTER: RegisterDefinition = [10, 2, 'FLOAT32', 'System Type', 0];
+
+  // Capabilities that need a neutral conductor. In a 3-phase 3-wire installation (e.g. an IT network)
+  // the meter reports 0 for them, so they are hidden and the line-to-line voltages are used instead.
+  static readonly NEUTRAL_ONLY_CAPABILITIES = [
+    'meter_l1_voltage', 'meter_l2_voltage', 'meter_l3_voltage',
+    'meter_l1_power', 'meter_l2_power', 'meter_l3_power',
+  ];
+
+  // Line-to-line voltage mappings for three phase meters (registers line1_2volt, line2_3volt, line3_1volt)
+  protected static lineVoltageMappings(): CapabilityMapping[] {
+    return [
+      ['line1_2volt', 'meter_l12_voltage'],
+      ['line2_3volt', 'meter_l23_voltage'],
+      ['line3_1volt', 'meter_l31_voltage'],
+    ].map(([resultKey, capability]) => ({
+      resultKey,
+      capabilities: [capability],
+      valid: EastronMeter.createValidator(true),
+      transform: EastronMeter.createTransform(),
+    }));
+  }
+
+  // True when the meter reports it is wired as 3-phase 3-wire (no neutral)
+  protected isThreeWire(result: Record<string, Measurement>): boolean {
+    const systemType = result['systemType'];
+    return systemType !== undefined && systemType.value !== INVALID_VALUE && Math.round(Number(systemType.value)) === 2;
+  }
+
   // Helper function to create a standard transform function
   protected static createTransform(round: boolean = false): (data: EnergymeterData) => number {
     return (data: EnergymeterData) => {
@@ -208,11 +239,25 @@ export abstract class EastronMeter extends Powermeter {
       this.log(key, value, scale, label);
     }
 
+    const threeWire = this.isThreeWire(result);
+    if (threeWire) {
+      for (const cap of EastronMeter.NEUTRAL_ONLY_CAPABILITIES) {
+        if (this.hasCapability(cap)) {
+          this.log(`3-phase 3-wire system: removing ${cap}`);
+          await this.removeCapability(cap).catch(this.error);
+        }
+      }
+    }
+
     // Process capability mappings
     for (const mapping of this.CapabilityMappings) {
       const data = result[mapping.resultKey];
 
       if (!data) {
+        continue;
+      }
+
+      if (threeWire && mapping.capabilities.some((cap) => EastronMeter.NEUTRAL_ONLY_CAPABILITIES.includes(cap))) {
         continue;
       }
 

@@ -5,6 +5,7 @@ import { EastronMeter, CapabilityMapping } from './eastron-meter';
 export class Energymeter extends EastronMeter {
 
   readonly holdingRegistersBase: { [key: string]: RegisterDefinition } = {
+    systemType: EastronMeter.SYSTEM_TYPE_REGISTER,
     // meter_serial: [256, 4, 'UINT32', 'Serial number', 0],
     /*
     464513 32257 Serial number FC 00 Serial number Length: 4 byte Data Format: unsigned int32 Note: Only read
@@ -57,6 +58,11 @@ export class Energymeter extends EastronMeter {
     totalImEnergy: [72, 2, 'FLOAT32', 'Total Import Energy', 0],
     totalExEnergy: [74, 2, 'FLOAT32', 'Total Export Energy', 0],
 
+    // Line to line voltages (the only valid voltages in a 3-phase 3-wire system)
+    line1_2volt: [200, 2, 'FLOAT32', 'Line 1 to Line 2 Voltage', 0],
+    line2_3volt: [202, 2, 'FLOAT32', 'Line 2 to Line 3 Voltage', 0],
+    line3_1volt: [204, 2, 'FLOAT32', 'Line 3 to Line 1 Voltage', 0],
+
     /*. below registers not implemented yet
     totalImEnergyVAr: [76, 2, 'FLOAT32', 'Total Import Reactive Energy', 0],
     totalExEnergyVAr: [78, 2, 'FLOAT32', 'Total Import Reactive Energy', 0],
@@ -68,9 +74,6 @@ export class Energymeter extends EastronMeter {
     maxsysVAdemand: [102, 2, 'FLOAT32', 'Maximum Total System VA Demand', 0],
     neutraldemandA: [104, 2, 'FLOAT32', 'Neutral Current demand', 0],
     maxneutraldemandA: [106, 2, 'FLOAT32', 'Maximum Neutral Current demand', 0],
-    line1_2volt: [200, 2, 'FLOAT32', 'Line 1 to Line 2 Voltage', 0],
-    line2_3volt: [202, 2, 'FLOAT32', 'Line 2 to Line 3 Voltage', 0],
-    line3_1volt: [204, 2, 'FLOAT32', 'Line 3 to Line 1 Voltage', 0],
     avglinel_lvolt: [206, 2, 'FLOAT32', 'Average L-L Voltage', 0],
     neutralcurrent: [224, 2, 'FLOAT32', 'Neutral Current', 0],
     totalkwh: [342, 2, 'FLOAT32', 'Total kwh(3)', 0],
@@ -187,6 +190,7 @@ export class Energymeter extends EastronMeter {
       valid: EastronMeter.createValidator(),
       transform: EastronMeter.createTransform(),
     },
+    ...EastronMeter.lineVoltageMappings(),
   ];
 
   protected readonly importEnergyKey = 'totalImEnergy';

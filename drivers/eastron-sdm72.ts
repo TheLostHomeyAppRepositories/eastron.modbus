@@ -20,7 +20,7 @@ The Modbus registers are mostly compatible with the SDM630 standard.
 export class Energymeter extends EastronMeter {
 
   readonly holdingRegistersBase: { [key: string]: RegisterDefinition } = {
-    // Holding registers for configuration (if needed)
+    systemType: EastronMeter.SYSTEM_TYPE_REGISTER,
   };
 
   // Register definitions for SDM72D-M-2 based on the manual
@@ -198,6 +198,7 @@ export class Energymeter extends EastronMeter {
       valid: EastronMeter.createValidator(true),
       transform: EastronMeter.createTransform(),
     },
+    ...EastronMeter.lineVoltageMappings(),
   ];
 
   protected readonly importEnergyKey = 'totalImEnergy';
